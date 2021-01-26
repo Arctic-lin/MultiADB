@@ -37,7 +37,7 @@ function mute(){
 a=1
 while (( $a>0 ))
 do
-    mute
+  mute
 	sleep 300
 done
 
