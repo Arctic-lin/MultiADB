@@ -24,5 +24,5 @@ class Ui_Dialog(object):
     def retranslateUi(self, Dialog):
         _translate = QtCore.QCoreApplication.translate
         Dialog.setWindowTitle(_translate("Dialog", "APP授权初始化"))
-        Dialog.setWindowIcon(QtGui.QIcon("./lib/pokeballs.ico"))
+        Dialog.setWindowIcon(QtGui.QIcon("../pokeballs.ico"))
         self.label.setText(_translate("Dialog", "正在进行Monkey初始化,请连接仅一台测试设备进行初始化..."))

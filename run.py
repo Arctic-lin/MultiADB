@@ -1,28 +1,30 @@
 # -*- coding: utf-8 -*-
 # @Time    : 2020/7/15 11:38
 # @Author  : Arctic
-# @FileName: debugg.py
+# @FileName: run.py
 # @Software: PyCharm
 # @Purpose :
 # import logging
 # logging.basicConfig(level = logging.INFO,format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 # logger = logging.getLogger(__name__)
-from common import configLog
-from main_ui import Ui_MainWindow
+
+from lib.common import configLog
+from lib.UIFile.main_ui import Ui_MainWindow
 import sys
 import subprocess
 import re
 import sip
 import os
-from threadFile import MyThread, GetDevThread, MonkeyThread, ToolsThread
+from lib.threadFile import MyThread, GetDevThread, MonkeyThread, ToolsThread
 from pypinyin import lazy_pinyin
 from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QTableWidgetItem, QMessageBox, QProgressBar, QDialog, QComboBox
-from ToolsBox import ToolsBox_Dialog
+from lib.UIFile.ToolsBox import ToolsBox_Dialog
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.Qt import QThread
-from monkeyDialog import Ui_Dialog
+from lib.UIFile.monkeyDialog import Ui_Dialog
+
 
 devList = []
 logger = configLog()
@@ -231,12 +233,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     testType = "Userdefine"
                     adb_command = self.addCommand.toPlainText()
                     if not adb_command:
-                        button = QMessageBox.warning(self, "Warning", "输入框为空", QMessageBox.Yes)
-                        if button == QMessageBox.Yes:
-                            logger.info("Error:输入框为空")
-                            return False
+                        # button = QMessageBox.warning(self, "Warning", "输入框为空", QMessageBox.Yes)
+                        # if button == QMessageBox.Yes:
+                        #     logger.info("Error:输入框为空")
+                        #     return False
+                        adb_command = "shell settings put global device_provisioned 1;" \
+                                      "shell settings put secure user_setup_complete 1;" \
+                                      "reboot"
+                        self.th = MyThread(testType, devSingleId, adb_command)
+                        self.th.sinOutStatus.connect(self.devStatus)
+                        self.th.sinOutProgress.connect(self.devProgress)
+                        thread_pool.append(self.th)
                     else:
-                        self.th = MyThread(testType,devSingleId,adb_command)
+                        self.th = MyThread(testType, devSingleId, adb_command)
                         self.th.sinOutStatus.connect(self.devStatus)
                         self.th.sinOutProgress.connect(self.devProgress)
                         thread_pool.append(self.th)
@@ -682,6 +691,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
 class MonkeyDialog(QDialog,Ui_Dialog):
     dialogSignl = pyqtSignal(int)
+
     def __init__(self):
         QDialog.__init__(self)
         self.setupUi(self)
@@ -823,7 +833,7 @@ class ToolsBoxDialog(QDialog,ToolsBox_Dialog):
         devId = self.lockFirst()
         if devId:
             # devId = self.comboBox_devID.currentText()
-            self.th = ToolsThread("GetNokPkg",devId)
+            self.th = ToolsThread("GetNokPkg", devId)
             self.th.sinOutResult.connect(self.getMsg)
             self.th.start()
 

@@ -4,12 +4,11 @@
 # @FileName: threadFile.py
 # @Software: PyCharm
 # @Purpose : multiADB threadFile
-from common import configLog
+from lib.common import configLog
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.Qt import QThread
 import subprocess
 import re
-import sip
 import os
 
 logger = configLog()
@@ -17,7 +16,11 @@ adb_progress = r".\lib\adb\adb.exe"
 adb_pid = ""
 
 #MainThread
-
+'''getDevSN Other way
+import adbutils
+for d in adbutils.adb.device_list():
+    print(d.serial)
+'''
 
 class MyThread(QThread):
     sinOutStatus = pyqtSignal(str, str)
@@ -162,13 +165,13 @@ class MyThread(QThread):
 
         elif self.args[0] == 1:
             if self.args[1]:
-                #loopTime = self.args[1]
+                # loopTime = self.args[1]
                 pass
         self.sinOutStatus.emit(self.dev, "完成")
-    #Reboot
+    # Reboot
     def rebootDev(self):
 
-        #args0 = reboot type
+        # args0 = reboot type
         self.sinOutStatus.emit(self.dev, "重启")
         self.sinOutProgress.emit(self.dev, 20)
         if self.args[0] == 0:
@@ -181,8 +184,8 @@ class MyThread(QThread):
     #Monkey
     def monkey(self):
 
-        #args[0]=src
-        #args[1]=apk
+        # args[0]=src
+        # args[1]=apk
         if self.testType == "MonkeyMedia":
             if len(self.args) == 2:
                 logger.info("拷贝媒体文件和安装APK")
@@ -253,6 +256,7 @@ class MyThread(QThread):
                 eachCommand.append(addDevInfo)
             comm.append(eachCommand)
         return comm
+
     #UserDefine
     def userDefine(self):
         self.sinOutStatus.emit(self.dev, "处理ADB命令")
@@ -277,7 +281,7 @@ class MyThread(QThread):
     def pullLog(self):
         #args[0] == /sdcard文件
         #args[1] == 电脑目录
-        self.sinOutStatus.emit(self.dev, "在%s下生成%s文件夹"%(self.args[1], self.dev))
+        self.sinOutStatus.emit(self.dev, "在%s下生成%s文件夹" % (self.args[1], self.dev))
         self.sinOutProgress.emit(self.dev, 5)
         new_path = os.path.join(self.args[1], self.dev)
         # if os.path.isdir(self.args[1]):
@@ -300,17 +304,17 @@ class MyThread(QThread):
     def checkTestType(self):
         if self.testType == "FOTA":
             self.fotaTest()
-        elif self.testType =="PushFile":
+        elif self.testType == "PushFile":
             self.pushTest()
-        elif self.testType =="InstallAPK":
+        elif self.testType == "InstallAPK":
             self.installAPK()
-        elif self.testType =="Mute":
+        elif self.testType == "Mute":
             self.Mute()
-        elif self.testType =="Reboot":
+        elif self.testType == "Reboot":
             self.rebootDev()
-        elif self.testType =="Userdefine":
+        elif self.testType == "Userdefine":
             self.userDefine()
-        elif self.testType =="MonkeyApply":
+        elif self.testType == "MonkeyApply":
             self.monkey()
         elif self.testType == "MonkeyMedia":
             self.monkey()
@@ -393,18 +397,19 @@ class MonkeyThread(QThread):
 
     def getDevLog(self):
         log_tools = {
-            "com.tcl.logger":
-                "am startservice -n com.tcl.logger/com.tcl.logger.service.LogSwitchService -a com.tcl.logger.turnon",
             "com.debug.loggerui":
-                "am broadcast -a com.debug.loggerui.ADB_CMD -e cmd_name start --ei cmd_target 1 -f 0x01000000",
+                "am broadcast -a com.debug.loggerui.ADB_CMD -e cmd_name start --ei cmd_target 1 -f 0x01000000\n",
+            "com.mediatek.mtklogger":
+                "am broadcast -a com.mediatek.mtklogger.ADB_CMD -e cmd_name start --ei cmd_target 1",
             "com.tct.feedback":
                 "am start com.tct.feedback/.external.activity.MainActivity",
-            "com.mediatek.mtklogger":
-                "am broadcast -a com.mediatek.mtklogger.ADB_CMD -e cmd_name start --ei cmd_target 1"
+            "com.tcl.logger":
+                "am startservice -n com.tcl.logger/com.tcl.logger.service.LogSwitchService -a com.tcl.logger.turnon\n"
+                "am start -n com.tcl.logger/.issue.ui.activity.DeveloperSettingActivity",
         }
         for tools in log_tools.items():
-            pmList = subprocess.check_output\
-                ("adb shell pm list package %s" % (tools[0]), encoding="utf-8")
+            pmList = subprocess.check_output \
+                ("%s shell pm list package %s" % (adb_progress, tools[0]), encoding="utf-8")
             if pmList:
                 return tools
             else:
@@ -426,17 +431,22 @@ class MonkeyThread(QThread):
     def creatShellSript(self):
         self.sinOutMonkey.emit(100, "获取设备APK信息...")
         allGrant = self.getPermmision()
+        getOS = subprocess.check_output("%s shell getprop ro.build.version.release" %
+                                           (adb_progress), encoding="utf-8")
         if allGrant:
             self.sinOutMonkey.emit(100, "获取设备Log工具...")
             log_tools = self.getDevLog()
             if log_tools:
                 self.sinOutMonkey.emit(100, "Log工具为:%s\n生成脚本中..." % log_tools[0])
-            with open("main.sh", "w", encoding="utf-8", newline='\n') as f:
+            with open("../main.sh", "w", encoding="utf-8", newline='\n') as f:
                 # 设置Never sleep
-                f.writelines("settings put system screen_off_timeout 1\n")
-                #授权命令
+                if getOS.strip() == "11":
+                    f.writelines("settings put system screen_off_timeout 2147483647\n")
+                else:
+                    f.writelines("settings put system screen_off_timeout 1\n")
+                # 授权命令
                 for i in allGrant:
-                    f.writelines("%s\n"%i)
+                    f.writelines("%s\n" % i)
             # 仅授权的话添加am启动Settings来辨识脚本执行完成
                 if self.testType == "OnlyApply":
                     f.writelines("am start com.android.settings\n")
@@ -447,7 +457,7 @@ class MonkeyThread(QThread):
                     # 通过
                     if log_tools:
                         f.writelines(log_tools[1] + "\n")
-                #写入额外指令内容
+                # 写入额外指令内容
                 _cmd = self.getAddCmd()
                 if _cmd:
                     if isinstance(_cmd, str):
@@ -458,13 +468,13 @@ class MonkeyThread(QThread):
                             if i:
                                 self.sinOutMonkey.emit(100, "添加额外命令:%s" % i)
                                 f.writelines(i + "\n")
-                ### 写入执行静音脚本指令
+                # 写入执行静音脚本指令
                 if self.pushType == "nohup":
                     f.writelines(r"nohup sh /data/local/tmp/Mute.sh&" + "\n")
                 else:
                     f.writelines(r"sh /data/local/tmp/Mute.sh&" + "\n")
             ### 执行脚本
-            with open("main.txt", "w", encoding="utf-8") as f:
+            with open("../main.txt", "w", encoding="utf-8") as f:
                 if self.pushType == "nohup":
                     f.write(r"cd /data/local/tmp" + "\n" + "nohup sh main.sh&" + "\n")
                 else:
@@ -472,7 +482,6 @@ class MonkeyThread(QThread):
             self.sinOutMonkey.emit(300, "完成")
         else:
             self.sinOutMonkey.emit(400, "未检测到需要授权的APP")
-
 
     def run(self):
         self.getDevSN()
@@ -530,7 +539,7 @@ class ToolsThread(QThread):
     def getCurrentPNG(self):
         self.shellCmd("exec-out screencap -p > %s.png"% self.dev)
         from PIL import Image
-        img = Image.open("%s.png"% self.dev)
+        img = Image.open("%s.png" % self.dev)
         img.show()
 
     def getDevInfo(self):
@@ -591,16 +600,19 @@ class ToolsThread(QThread):
     def setBrightness(self):
         if self.args:
             bri_num = self.args[0]
-            self.shellCmd("shell settings put system screen_brightness %s" % bri_num)
+            self.shellCmd\
+                ("shell settings put system screen_brightness %s" % bri_num)
 
     def getNowpkg(self):
-        nowPkg = self.shellCmd("shell \"dumpsys activity top | grep ACTIVITY | awk 'END{print $2}'\"")
+        nowPkg = self.shellCmd\
+            ("shell \"dumpsys activity top | grep ACTIVITY | awk 'END{print $2}'\"")
         if nowPkg:
             if "\n" in nowPkg:
                 nowPkg = nowPkg.replace("\n", "")
             if "/" in nowPkg:
                 pkg_ = nowPkg.split("/")[0]
-                pkg_version = self.shellCmd("shell \"pm dump %s | grep versionName | sed 's/[ ]//g'\"" % pkg_)
+                pkg_version = self.shellCmd\
+                    ("shell \"pm dump %s | grep versionName | sed 's/[ ]//g'\"" % pkg_)
                 if pkg_version:
                     self.sinOutResult.emit(400, nowPkg+"\n"+pkg_version)
                     return

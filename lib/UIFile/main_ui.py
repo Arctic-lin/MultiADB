@@ -105,7 +105,7 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MultiADB"))
-        MainWindow.setWindowIcon(QtGui.QIcon(r"./lib/pokeballs.ico"))
+        MainWindow.setWindowIcon(QtGui.QIcon(r"../pokeballs.ico"))
         self.rbtn_fota.setText(_translate("MainWindow", "FOTA测试"))
         self.rbtn_pushFile.setText(_translate("MainWindow", "Push文件"))
         self.rbtn_installAPk.setText(_translate("MainWindow", "安装应用"))
